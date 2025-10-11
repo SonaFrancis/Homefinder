@@ -169,7 +169,7 @@ export default function SignUpScreen() {
               <Text style={styles.label}>Phone Number</Text>
               <TextInput
                 style={styles.input}
-                placeholder="+1234567890 or 1234567890"
+                placeholder="+237676237345"
                 placeholderTextColor="#666"
                 value={phone}
                 onChangeText={setPhone}
