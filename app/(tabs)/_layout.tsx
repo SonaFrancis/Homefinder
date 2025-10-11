@@ -12,12 +12,12 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#10B981',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarInactiveTintColor: '#6B7280',
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: '#fff',
+          backgroundColor: '#F3F4F6',
           borderTopWidth: 1,
-          borderTopColor: '#f0f0f0',
+          borderTopColor: '#E5E7EB',
           // Use safe area insets for both platforms to stay above system navigation
           height: Platform.OS === 'ios' ? 65 + insets.bottom : 60 + insets.bottom,
           paddingBottom: insets.bottom > 0 ? insets.bottom : spacing.sm,

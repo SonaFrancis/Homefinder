@@ -225,16 +225,28 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
     });
 
     if (!result.canceled && result.assets) {
-      const MAX_VIDEO_SIZE = 15 * 1024 * 1024; // 15MB in bytes
+      const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 20MB in bytes
       const newMedia: MediaAsset[] = [];
 
       for (const asset of result.assets) {
         const type = asset.type === 'video' ? 'video' : 'image';
 
-        // Check if adding another video when one already exists
+        // Count existing and new media
+        const existingImages = selectedMedia.filter(m => m.type === 'image').length;
         const existingVideos = selectedMedia.filter(m => m.type === 'video').length;
+        const newImages = newMedia.filter(m => m.type === 'image').length;
         const newVideos = newMedia.filter(m => m.type === 'video').length;
 
+        // Check image limit (max 5 images)
+        if (type === 'image' && (existingImages + newImages) >= 5) {
+          Alert.alert(
+            'Image Limit Reached',
+            'You can upload maximum 5 images per post. Please remove some images first.'
+          );
+          continue;
+        }
+
+        // Check video limit (max 1 video)
         if (type === 'video' && (existingVideos + newVideos) >= 1) {
           Alert.alert(
             'Video Limit Reached',
@@ -243,24 +255,42 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
           continue;
         }
 
-        // Check video file size
+        // Check video duration and file size
         if (type === 'video') {
           try {
-            const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+            // Check video duration (max 3 minutes like WhatsApp)
+            if (asset.duration) {
+              const durationInSeconds = asset.duration / 1000; // Convert from ms to seconds
+              const MAX_DURATION = 180; // 3 minutes in seconds
 
-            if (fileInfo.exists && fileInfo.size) {
-              if (fileInfo.size > MAX_VIDEO_SIZE) {
-                const sizeMB = (fileInfo.size / (1024 * 1024)).toFixed(2);
+              if (durationInSeconds > MAX_DURATION) {
+                const minutes = Math.floor(durationInSeconds / 60);
+                const seconds = Math.floor(durationInSeconds % 60);
                 Alert.alert(
-                  'Video Too Large',
-                  `The selected video is ${sizeMB}MB. Maximum allowed size is 15MB. Please select a smaller video or compress it.`
+                  'Video Too Long',
+                  `The selected video is ${minutes}m ${seconds}s. Maximum allowed duration is 3 minutes. Please select a shorter video or trim it.`
                 );
                 continue;
               }
             }
+
+            // Check actual base64 encoded size (true upload size)
+            const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+              encoding: 'base64',
+            });
+
+            const actualUploadSize = base64.length;
+            if (actualUploadSize > MAX_VIDEO_SIZE) {
+              const sizeMB = (actualUploadSize / (1024 * 1024)).toFixed(2);
+              Alert.alert(
+                'Video Too Large',
+                `The selected video is ${sizeMB}MB after encoding. Maximum allowed size is 20MB. Please select a smaller video or compress it.`
+              );
+              continue;
+            }
           } catch (error) {
-            console.error('Error checking video size:', error);
-            Alert.alert('Error', 'Could not verify video size. Please try again.');
+            console.error('Error checking video:', error);
+            Alert.alert('Error', 'Could not verify video. Please try again.');
             continue;
           }
         }
@@ -1148,7 +1178,7 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
               <Ionicons name="cloud-upload-outline" size={scale(32)} color="#10B981" />
               <Text style={styles.uploadText}>Upload Photos or Videos</Text>
               <Text style={styles.uploadHint}>From your device gallery</Text>
-              <Text style={styles.uploadLimit}>Max 1 video (15MB), unlimited images</Text>
+              <Text style={styles.uploadLimit}>Max 5 images & 1 video per post (20MB max per video)</Text>
             </TouchableOpacity>
 
             {/* Media Preview */}
@@ -1698,6 +1728,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.base,
     borderRadius: spacing.md,
     marginTop: spacing.lg,
+    marginBottom: spacing.xxxl * 2, // Extra margin to move button above navigation menu
   },
   submitButtonText: {
     fontSize: fontSize.md,

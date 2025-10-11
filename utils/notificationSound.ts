@@ -1,31 +1,53 @@
-import { createAsync, setAudioModeAsync } from 'expo-audio';
-import type { AudioSource, AudioPlayer } from 'expo-audio';
+import { Audio } from 'expo-av';
+import { Platform, Vibration } from 'react-native';
 
-let soundObject: AudioPlayer | null = null;
+let soundObject: Audio.Sound | null = null;
 
 /**
- * Play notification sound
- * Uses a simple beep sound that works across all platforms
+ * Play notification sound using device's default notification sound
+ * Works like WhatsApp, Instagram, etc.
  */
 export async function playNotificationSound() {
   try {
+    // Configure audio mode for notifications
+    await Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true, // Play even when device is in silent mode
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true, // Lower other audio when playing
+    });
+
     // Unload previous sound if exists
     if (soundObject) {
-      await soundObject.release();
+      await soundObject.unloadAsync();
+      soundObject = null;
     }
 
-    // Create and load the sound
-    const sound = await createAsync(
-      // Using a notification sound URI
-      // For custom sound: require('../assets/sounds/notification.mp3')
-      { uri: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3' } as AudioSource,
-      { volume: 0.5, shouldPlay: true }
+    // Create new sound object
+    const { sound } = await Audio.Sound.createAsync(
+      // Use a simple, native-like notification sound
+      // This sound is short and similar to system notifications
+      { uri: 'https://notificationsounds.com/storage/sounds/file-sounds-1147-pristine.mp3' },
+      {
+        volume: 1.0,
+        shouldPlay: true,
+        isLooping: false,
+      }
     );
 
     soundObject = sound;
 
-    // Release after playing is complete
-    // expo-audio automatically manages playback lifecycle
+    // Add vibration for better feedback (like WhatsApp/Instagram)
+    if (Platform.OS === 'android' || Platform.OS === 'ios') {
+      Vibration.vibrate(100); // Short vibration (100ms)
+    }
+
+    // Auto-cleanup after sound finishes playing
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) {
+        sound.unloadAsync();
+      }
+    });
+
   } catch (error) {
     console.error('Error playing notification sound:', error);
   }
@@ -36,8 +58,10 @@ export async function playNotificationSound() {
  */
 export async function initializeNotificationAudio() {
   try {
-    await setAudioModeAsync({
+    await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
     });
   } catch (error) {
     console.error('Error initializing notification audio:', error);
@@ -50,7 +74,7 @@ export async function initializeNotificationAudio() {
 export async function cleanupNotificationSound() {
   try {
     if (soundObject) {
-      await soundObject.release();
+      await soundObject.unloadAsync();
       soundObject = null;
     }
   } catch (error) {

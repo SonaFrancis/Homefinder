@@ -11,8 +11,8 @@ export const FEATURE_FLAGS = {
   // When subscriptions disabled, these are the default limits
   FREE_ACCESS_LIMITS: {
     maxPostsPerMonth: 999, // Unlimited posts (or set a reasonable limit)
-    maxImagesPerPost: 10,
-    maxVideosPerPost: 5,
+    maxImagesPerPost: 5,
+    maxVideosPerPost: 1,
     dashboardAccess: true,
   }
 } as const;

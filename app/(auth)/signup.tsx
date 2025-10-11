@@ -142,6 +142,7 @@ export default function SignUpScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your full name"
+                placeholderTextColor="#666"
                 value={fullName}
                 onChangeText={setFullName}
                 autoCapitalize="words"
@@ -154,6 +155,7 @@ export default function SignUpScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your email"
+                placeholderTextColor="#666"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -168,6 +170,7 @@ export default function SignUpScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="6XX XXX XXX"
+                placeholderTextColor="#666"
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -179,7 +182,7 @@ export default function SignUpScreen() {
               <Text style={styles.label}>I am a...</Text>
               <View style={styles.roleContainer}>
                 {[
-                  { value: 'student', label: 'Student' },
+                  { value: 'student', label: 'Ternant' },
                   { value: 'landlord', label: 'Landlord' },
                   { value: 'seller', label: 'Seller' },
                 ].map((option) => (
@@ -210,6 +213,7 @@ export default function SignUpScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your password"
+                placeholderTextColor="#666"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -223,6 +227,7 @@ export default function SignUpScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Confirm your password"
+                placeholderTextColor="#666"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
