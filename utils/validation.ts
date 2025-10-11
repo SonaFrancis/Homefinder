@@ -52,20 +52,22 @@ export function validatePassword(password: string): ValidationResult {
 }
 
 /**
- * Validate phone number (Cameroon format)
+ * Validate phone number (International format)
+ * Accepts all international phone numbers with or without country code
  */
 export function validatePhoneNumber(phone: string): ValidationResult {
-  // Cameroon phone numbers: +237 6XX XXX XXX or 6XX XXX XXX
-  const phoneRegex = /^(\+237)?6[0-9]{8}$/;
-
   if (!phone) {
     return { isValid: false, error: 'Phone number is required' };
   }
 
-  const cleanedPhone = phone.replace(/\s/g, '');
+  const cleanedPhone = phone.replace(/[\s\-\(\)\.]/g, '');
+
+  // Accept numbers with + prefix (international format) or without
+  // Minimum 7 digits, maximum 15 digits (per E.164 standard)
+  const phoneRegex = /^(\+)?[0-9]{7,15}$/;
 
   if (!phoneRegex.test(cleanedPhone)) {
-    return { isValid: false, error: 'Invalid Cameroon phone number format' };
+    return { isValid: false, error: 'Invalid phone number format. Please enter a valid phone number.' };
   }
 
   return { isValid: true };
