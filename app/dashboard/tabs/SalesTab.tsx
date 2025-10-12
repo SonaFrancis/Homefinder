@@ -267,10 +267,16 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
           setVideoProcessingMessage('Checking video...');
 
           try {
-            const result = await processVideo(asset.uri, (progress, message) => {
-              setVideoProcessingProgress(progress);
-              setVideoProcessingMessage(message);
-            });
+            const result = await processVideo(
+              asset.uri,
+              (progress, message) => {
+                setVideoProcessingProgress(progress);
+                setVideoProcessingMessage(message);
+              },
+              asset.duration,
+              asset.width,
+              asset.height
+            );
 
             setVideoProcessing(false);
 

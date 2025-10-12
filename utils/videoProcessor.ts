@@ -35,30 +35,31 @@ export type VideoMetadata = {
 /**
  * Get video metadata (size, duration, dimensions)
  */
-export async function getVideoMetadata(uri: string): Promise<VideoMetadata> {
+export async function getVideoMetadata(
+  uri: string,
+  duration?: number,
+  width?: number,
+  height?: number
+): Promise<VideoMetadata> {
   try {
     // Get file size
     const fileInfo = await FileSystem.getInfoAsync(uri);
+    if (!fileInfo.exists) {
+      throw new Error('Video file not found');
+    }
+
     const size = (fileInfo as any).size || 0;
 
-    // Get video duration and dimensions
-    const { durationMillis, naturalSize } = await Video.createAsync(
-      { uri },
-      {},
-      null,
-      false
-    ).then(({ status }) => status as any);
-
-    const duration = (durationMillis || 0) / 1000; // Convert to seconds
-    const width = naturalSize?.width || 0;
-    const height = naturalSize?.height || 0;
+    // Use provided duration or default to 0
+    // Note: Duration should be provided from ImagePicker asset data
+    const videoDuration = duration ? duration / 1000 : 0; // Convert from ms to seconds
 
     return {
       uri,
       size,
-      duration,
-      width,
-      height,
+      duration: videoDuration,
+      width: width || 0,
+      height: height || 0,
     };
   } catch (error) {
     console.error('Error getting video metadata:', error);
@@ -146,12 +147,15 @@ async function trimVideo(
  */
 export async function processVideo(
   uri: string,
-  onProgress?: (progress: number, message: string) => void
+  onProgress?: (progress: number, message: string) => void,
+  duration?: number,
+  width?: number,
+  height?: number
 ): Promise<ProcessVideoResult> {
   try {
     // Step 1: Get video metadata
     onProgress?.(0.1, 'Reading video information...');
-    const metadata = await getVideoMetadata(uri);
+    const metadata = await getVideoMetadata(uri, duration, width, height);
 
     // Step 2: Check if processing is needed
     const { needsCompression, needsTrimming } = needsProcessing(metadata);
