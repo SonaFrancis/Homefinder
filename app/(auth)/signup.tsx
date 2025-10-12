@@ -17,7 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { validateEmail, validatePassword, validateFullName, validatePhoneNumber } from '@/utils/validation';
 import { spacing, fontSize, scale } from '@/utils/responsive';
 
-type UserRole = 'student' | 'landlord' | 'seller';
+type UserRole = 'Ternant' | 'landlord' | 'seller';
 
 export default function SignUpScreen() {
   const [fullName, setFullName] = useState('');
@@ -25,7 +25,7 @@ export default function SignUpScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('student');
+  const [role, setRole] = useState<UserRole>('Ternant');
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
@@ -182,7 +182,7 @@ export default function SignUpScreen() {
               <Text style={styles.label}>I am a...</Text>
               <View style={styles.roleContainer}>
                 {[
-                  { value: 'student', label: 'Ternant' },
+                  { value: 'Ternant', label: 'Ternant' },
                   { value: 'landlord', label: 'Landlord' },
                   { value: 'seller', label: 'Seller' },
                 ].map((option) => (
