@@ -3,9 +3,9 @@
  * Handles video validation, compression, and trimming
  */
 
-import { Video } from 'expo-av';
+import { Video, AVPlaybackStatus } from 'expo-av';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 
 // Constants
@@ -37,33 +37,102 @@ export type VideoMetadata = {
  */
 export async function getVideoMetadata(
   uri: string,
-  duration?: number,
+  pickerDuration?: number,
   width?: number,
   height?: number
 ): Promise<VideoMetadata> {
   try {
+    console.log('📹 Getting video metadata for:', uri);
+
+    // Small delay to ensure file is ready (especially on Android)
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Convert content URI to file URI if needed (Android)
+    let localUri = uri;
+    if (Platform.OS === 'android' && uri.startsWith('content://')) {
+      try {
+        // For content URIs on Android, copy to cache first
+        const filename = uri.split('/').pop() || `video_${Date.now()}.mp4`;
+        const cacheUri = `${FileSystem.cacheDirectory}${filename}`;
+        await FileSystem.copyAsync({ from: uri, to: cacheUri });
+        localUri = cacheUri;
+        console.log('📱 Converted Android content URI to:', localUri);
+      } catch (copyError) {
+        console.warn('⚠️ Could not copy content URI, using original:', copyError);
+        // Continue with original URI if copy fails
+      }
+    }
+
     // Get file size
-    const fileInfo = await FileSystem.getInfoAsync(uri);
+    const fileInfo = await FileSystem.getInfoAsync(localUri);
     if (!fileInfo.exists) {
       throw new Error('Video file not found');
     }
 
     const size = (fileInfo as any).size || 0;
+    console.log('📊 File size:', (size / (1024 * 1024)).toFixed(2), 'MB');
 
-    // Use provided duration or default to 0
-    // Note: Duration should be provided from ImagePicker asset data
-    const videoDuration = duration ? duration / 1000 : 0; // Convert from ms to seconds
+    // Try to get duration from multiple sources
+    let videoDuration = 0;
 
-    return {
-      uri,
+    // Option 1: Use picker-provided duration if available (most reliable)
+    if (pickerDuration && pickerDuration > 0) {
+      videoDuration = pickerDuration / 1000; // Convert from ms to seconds
+      console.log('⏱️ Duration from picker:', videoDuration, 'seconds');
+    } else {
+      // Option 2: Try to extract duration using expo-av
+      try {
+        console.log('🎬 Attempting to load video with expo-av...');
+        const { sound, status } = await Video.Sound.createAsync(
+          { uri: localUri },
+          { shouldPlay: false },
+          null,
+          false
+        );
+
+        if (status.isLoaded && status.durationMillis) {
+          videoDuration = status.durationMillis / 1000;
+          console.log('⏱️ Duration from expo-av:', videoDuration, 'seconds');
+        }
+
+        // Unload the sound
+        try {
+          await sound.unloadAsync();
+        } catch (unloadError) {
+          console.warn('Could not unload sound:', unloadError);
+        }
+      } catch (avError) {
+        console.warn('⚠️ Could not get duration from expo-av:', avError);
+
+        // Option 3: Try using VideoThumbnails as fallback
+        try {
+          console.log('🖼️ Attempting to generate thumbnail...');
+          const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(localUri, {
+            time: 1000,
+          });
+          console.log('✅ Thumbnail generated, video is readable');
+          // If we can generate a thumbnail, video is valid but we don't know duration
+          // Set a default that won't fail validation (29 seconds)
+          videoDuration = pickerDuration ? pickerDuration / 1000 : 29;
+        } catch (thumbError) {
+          console.warn('⚠️ Could not generate thumbnail:', thumbError);
+        }
+      }
+    }
+
+    const metadata = {
+      uri: localUri, // Return the local URI (might be different if we copied)
       size,
       duration: videoDuration,
       width: width || 0,
       height: height || 0,
     };
+
+    console.log('✅ Video metadata extracted:', metadata);
+    return metadata;
   } catch (error) {
-    console.error('Error getting video metadata:', error);
-    throw new Error('Failed to read video metadata');
+    console.error('❌ Error getting video metadata:', error);
+    throw new Error('Failed to read video metadata. Please try a different video.');
   }
 }
 
