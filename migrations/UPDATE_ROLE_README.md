@@ -12,14 +12,41 @@ This migration updates the user role from "student" to "Ternant" in the database
 
 ## How to Run This Migration
 
-### Option 1: Using Supabase Dashboard (Recommended)
+### Using Supabase Dashboard (REQUIRED - Must Run in Two Steps)
+
+**⚠️ IMPORTANT: This migration MUST be run in TWO separate steps due to PostgreSQL enum restrictions.**
+
+#### Step 1: Add the new enum value
 
 1. Go to your Supabase project dashboard
 2. Navigate to the **SQL Editor**
-3. Open the file `migrations/update_student_role_to_ternant.sql`
-4. Copy all the SQL code
-5. Paste it into the SQL Editor
-6. Click **Run** to execute the migration
+3. Copy **ONLY PART 1** from `migrations/update_student_role_to_ternant.sql`:
+   ```sql
+   ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'Ternant';
+   ```
+4. Paste it into the SQL Editor
+5. Click **Run**
+6. **Wait 5-10 seconds** for the transaction to commit
+
+#### Step 2: Update existing records
+
+7. In the SQL Editor, copy **PART 2** from the migration file:
+   ```sql
+   UPDATE profiles
+   SET role = 'Ternant'
+   WHERE role = 'student';
+
+   ALTER TABLE profiles
+   ALTER COLUMN role SET DEFAULT 'Ternant';
+
+   SELECT role, COUNT(*) as count
+   FROM profiles
+   GROUP BY role
+   ORDER BY role;
+   ```
+8. Paste it into the SQL Editor
+9. Click **Run**
+10. You should see the verification results showing your updated roles
 
 ### Option 2: Using Supabase CLI
 
