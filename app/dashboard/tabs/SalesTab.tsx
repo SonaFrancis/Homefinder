@@ -219,80 +219,33 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permissionResult.granted) {
-      Alert.alert('Permission Required', 'Please allow access to your photos and videos');
+      Alert.alert('Permission Required', 'Please allow access to your photos');
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images', 'videos'],
+      mediaTypes: ['images'],
       allowsMultipleSelection: true,
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets) {
-      const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 20MB in bytes
       const newMedia: MediaAsset[] = [];
 
       for (const asset of result.assets) {
-        const type = asset.type === 'video' ? 'video' : 'image';
+        const type = 'image'; // Only images allowed now
 
-        // Count existing and new media
+        // Count existing and new images
         const existingImages = selectedMedia.filter(m => m.type === 'image').length;
-        const existingVideos = selectedMedia.filter(m => m.type === 'video').length;
         const newImages = newMedia.filter(m => m.type === 'image').length;
-        const newVideos = newMedia.filter(m => m.type === 'video').length;
 
         // Check image limit (max 5 images)
-        if (type === 'image' && (existingImages + newImages) >= 5) {
+        if ((existingImages + newImages) >= 5) {
           Alert.alert(
             'Image Limit Reached',
             'You can upload maximum 5 images per post. Please remove some images first.'
           );
           continue;
-        }
-
-        // Check video limit (max 1 video)
-        if (type === 'video' && (existingVideos + newVideos) >= 1) {
-          Alert.alert(
-            'Video Limit Reached',
-            'You can only upload one video per listing. Please remove the existing video first.'
-          );
-          continue;
-        }
-
-        // Process and validate video
-        if (type === 'video') {
-          setVideoProcessing(true);
-          setVideoProcessingProgress(0);
-          setVideoProcessingMessage('Checking video...');
-
-          try {
-            const result = await processVideo(
-              asset.uri,
-              (progress, message) => {
-                setVideoProcessingProgress(progress);
-                setVideoProcessingMessage(message);
-              },
-              asset.duration,
-              asset.width,
-              asset.height
-            );
-
-            setVideoProcessing(false);
-
-            if (!result.valid) {
-              showVideoValidationError(result.reason || 'Video validation failed');
-              continue;
-            }
-
-            // Use the processed video URI
-            newMedia.push({ uri: result.uri!, type });
-            continue;
-          } catch (error) {
-            setVideoProcessing(false);
-            Alert.alert('Error', 'Could not process video. Please try again.');
-            continue;
-          }
         }
 
         newMedia.push({
@@ -397,7 +350,7 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
     }
 
     if (selectedMedia.length === 0) {
-      Alert.alert('Required', 'Please upload at least one photo or video');
+      Alert.alert('Required', 'Please upload at least one photo');
       return;
     }
     if (!profile?.id) {
@@ -1179,12 +1132,12 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
 
           {/* Media Upload */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Photos & Videos *</Text>
+            <Text style={styles.label}>Photos *</Text>
             <TouchableOpacity style={styles.uploadButton} onPress={pickMedia}>
               <Ionicons name="cloud-upload-outline" size={scale(32)} color="#10B981" />
-              <Text style={styles.uploadText}>Upload Photos or Videos</Text>
+              <Text style={styles.uploadText}>Upload Photos</Text>
               <Text style={styles.uploadHint}>From your device gallery</Text>
-              <Text style={styles.uploadLimit}>Max 5 images & 1 video per post (max 20MB, 30s - auto-compressed)</Text>
+              <Text style={styles.uploadLimit}>Max 5 images per post</Text>
             </TouchableOpacity>
 
             {/* Media Preview */}

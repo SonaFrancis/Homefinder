@@ -165,85 +165,34 @@ export default function PropertyTab({ onFormStateChange, resetTrigger }: Propert
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permissionResult.granted) {
-      Alert.alert('Permission Required', 'Please allow access to your photos and videos');
+      Alert.alert('Permission Required', 'Please allow access to your photos');
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images', 'videos'],
+      mediaTypes: ['images'],
       allowsMultipleSelection: true,
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets) {
-      const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 20MB in bytes
       const limits = getUploadLimits();
       const newMedia: MediaAsset[] = [];
 
       for (const asset of result.assets) {
-        const type = asset.type === 'video' ? 'video' : 'image';
+        const type = 'image'; // Only images allowed now
 
-        // Count existing and new media
+        // Count existing and new images
         const existingImages = selectedMedia.filter(m => m.type === 'image').length;
-        const existingVideos = selectedMedia.filter(m => m.type === 'video').length;
         const newImages = newMedia.filter(m => m.type === 'image').length;
-        const newVideos = newMedia.filter(m => m.type === 'video').length;
 
         // Check image limit
-        if (type === 'image' && (existingImages + newImages) >= limits.maxImages) {
+        if ((existingImages + newImages) >= limits.maxImages) {
           Alert.alert(
             'Image Limit Reached',
             `Your ${limits.planName} plan allows ${limits.maxImages} image${limits.maxImages > 1 ? 's' : ''} per post. Please remove existing images or upgrade your plan.`
           );
           continue;
-        }
-
-        // Check video limit
-        if (type === 'video' && (existingVideos + newVideos) >= limits.maxVideos) {
-          Alert.alert(
-            'Video Limit Reached',
-            `Your ${limits.planName} plan allows ${limits.maxVideos} video${limits.maxVideos > 1 ? 's' : ''} per post. Please remove existing video${limits.maxVideos > 1 ? 's' : ''} or upgrade your plan.`
-          );
-          continue;
-        }
-
-        // Process video with comprehensive validation, compression, and trimming
-        if (type === 'video') {
-          setVideoProcessing(true);
-          setVideoProcessingProgress(0);
-          setVideoProcessingMessage('Checking video...');
-
-          try {
-            const result = await processVideo(
-              asset.uri,
-              (progress, message) => {
-                setVideoProcessingProgress(progress);
-                setVideoProcessingMessage(message);
-              },
-              asset.duration,
-              asset.width,
-              asset.height
-            );
-
-            setVideoProcessing(false);
-
-            if (!result.valid) {
-              showVideoValidationError(result.reason || 'Video validation failed');
-              continue;
-            }
-
-            // Use the processed video URI (which may be compressed/trimmed)
-            newMedia.push({
-              uri: result.uri!,
-              type
-            });
-            continue; // Skip the newMedia.push below since we already added it
-          } catch (error) {
-            console.error('Error processing video:', error);
-            setVideoProcessing(false);
-            Alert.alert('Error', 'Could not process video. Please try again.');
-            continue;
-          }
         }
 
         newMedia.push({
@@ -368,7 +317,7 @@ export default function PropertyTab({ onFormStateChange, resetTrigger }: Propert
     }
 
     if (selectedMedia.length === 0) {
-      Alert.alert('Required', 'Please upload at least one photo or video');
+      Alert.alert('Required', 'Please upload at least one photo');
       return;
     }
     if (!profile?.id) {
@@ -806,17 +755,13 @@ export default function PropertyTab({ onFormStateChange, resetTrigger }: Propert
 
           {/* Media Upload */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Photos & Videos *</Text>
+            <Text style={styles.label}>Photos *</Text>
             <TouchableOpacity style={styles.uploadButton} onPress={pickMedia}>
               <Ionicons name="cloud-upload-outline" size={scale(32)} color="#10B981" />
-              <Text style={styles.uploadText}>Upload Photos or Videos</Text>
+              <Text style={styles.uploadText}>Upload Photos</Text>
               <Text style={styles.uploadHint}>From your device gallery</Text>
               <Text style={styles.uploadLimit}>
-                {(() => {
-                  const limits = getUploadLimits();
-                  const videoLimits = getVideoLimits();
-                  return `Max ${limits.maxImages} image${limits.maxImages > 1 ? 's' : ''} & ${limits.maxVideos} video${limits.maxVideos > 1 ? 's' : ''} per post\n(Videos: max ${videoLimits.maxSizeMB}MB, ${videoLimits.maxDurationFormatted} - auto-compressed)`;
-                })()}
+                Max {getUploadLimits().maxImages} images per post
               </Text>
             </TouchableOpacity>
 
