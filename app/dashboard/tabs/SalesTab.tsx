@@ -32,6 +32,8 @@ import { useQuotaGuard } from '@/hooks/useQuotaGuard';
 import { SubscriptionStatusBanner } from '@/components/SubscriptionStatusBanner';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
 import { getPhoneValidationError, PHONE_PLACEHOLDER } from '@/utils/phoneValidation';
+import { processVideo, showVideoValidationError, getVideoLimits } from '@/utils/videoProcessor';
+import { VideoProcessingModal } from '@/components/VideoProcessingModal';
 
 interface MediaAsset {
   uri: string;
@@ -82,6 +84,9 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [videoProcessing, setVideoProcessing] = useState(false);
+  const [videoProcessingProgress, setVideoProcessingProgress] = useState(0);
+  const [videoProcessingMessage, setVideoProcessingMessage] = useState('');
 
   // Subscription scenario for banner
   const {
@@ -255,42 +260,31 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
           continue;
         }
 
-        // Check video duration and file size
+        // Process and validate video
         if (type === 'video') {
+          setVideoProcessing(true);
+          setVideoProcessingProgress(0);
+          setVideoProcessingMessage('Checking video...');
+
           try {
-            // Check video duration (max 3 minutes like WhatsApp)
-            if (asset.duration) {
-              const durationInSeconds = asset.duration / 1000; // Convert from ms to seconds
-              const MAX_DURATION = 180; // 3 minutes in seconds
-
-              if (durationInSeconds > MAX_DURATION) {
-                const minutes = Math.floor(durationInSeconds / 60);
-                const seconds = Math.floor(durationInSeconds % 60);
-                Alert.alert(
-                  'Video Too Long',
-                  `The selected video is ${minutes}m ${seconds}s. Maximum allowed duration is 3 minutes. Please select a shorter video or trim it.`
-                );
-                continue;
-              }
-            }
-
-            // Check actual base64 encoded size (true upload size)
-            const base64 = await FileSystem.readAsStringAsync(asset.uri, {
-              encoding: 'base64',
+            const result = await processVideo(asset.uri, (progress, message) => {
+              setVideoProcessingProgress(progress);
+              setVideoProcessingMessage(message);
             });
 
-            const actualUploadSize = base64.length;
-            if (actualUploadSize > MAX_VIDEO_SIZE) {
-              const sizeMB = (actualUploadSize / (1024 * 1024)).toFixed(2);
-              Alert.alert(
-                'Video Too Large',
-                `The selected video is ${sizeMB}MB after encoding. Maximum allowed size is 20MB. Please select a smaller video or compress it.`
-              );
+            setVideoProcessing(false);
+
+            if (!result.valid) {
+              showVideoValidationError(result.reason || 'Video validation failed');
               continue;
             }
+
+            // Use the processed video URI
+            newMedia.push({ uri: result.uri!, type });
+            continue;
           } catch (error) {
-            console.error('Error checking video:', error);
-            Alert.alert('Error', 'Could not verify video. Please try again.');
+            setVideoProcessing(false);
+            Alert.alert('Error', 'Could not process video. Please try again.');
             continue;
           }
         }
@@ -665,8 +659,14 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
     const limits = getUploadLimits();
 
     return (
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.form}>
+      <>
+        <VideoProcessingModal
+          visible={videoProcessing}
+          progress={videoProcessingProgress}
+          message={videoProcessingMessage}
+        />
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+          <View style={styles.form}>
           {/* Title */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Item Title *</Text>
@@ -1178,7 +1178,7 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
               <Ionicons name="cloud-upload-outline" size={scale(32)} color="#10B981" />
               <Text style={styles.uploadText}>Upload Photos or Videos</Text>
               <Text style={styles.uploadHint}>From your device gallery</Text>
-              <Text style={styles.uploadLimit}>Max 5 images & 1 video per post (20MB max per video)</Text>
+              <Text style={styles.uploadLimit}>Max 5 images & 1 video per post (max 20MB, 30s - auto-compressed)</Text>
             </TouchableOpacity>
 
             {/* Media Preview */}
@@ -1229,6 +1229,7 @@ export default function SalesTab({ onCategoryChange, resetTrigger, onCategorySel
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </>
     );
   }
 

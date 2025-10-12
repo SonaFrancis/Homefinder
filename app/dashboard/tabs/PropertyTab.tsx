@@ -23,6 +23,8 @@ import { useQuotaGuard } from '@/hooks/useQuotaGuard';
 import { SubscriptionStatusBanner } from '@/components/SubscriptionStatusBanner';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
 import { getPhoneValidationError, PHONE_PLACEHOLDER } from '@/utils/phoneValidation';
+import { processVideo, showVideoValidationError, getVideoLimits } from '@/utils/videoProcessor';
+import { VideoProcessingModal } from '@/components/VideoProcessingModal';
 
 interface MediaAsset {
   uri: string;
@@ -46,6 +48,9 @@ export default function PropertyTab({ onFormStateChange, resetTrigger }: Propert
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
+  const [videoProcessing, setVideoProcessing] = useState(false);
+  const [videoProcessingProgress, setVideoProcessingProgress] = useState(0);
+  const [videoProcessingMessage, setVideoProcessingMessage] = useState('');
 
   // Get subscription scenario for permissions
   const { scenario } = useSubscriptionScenario(profile?.id);
@@ -202,41 +207,35 @@ export default function PropertyTab({ onFormStateChange, resetTrigger }: Propert
           continue;
         }
 
-        // Check video duration and file size
+        // Process video with comprehensive validation, compression, and trimming
         if (type === 'video') {
+          setVideoProcessing(true);
+          setVideoProcessingProgress(0);
+          setVideoProcessingMessage('Checking video...');
+
           try {
-            // Check video duration (max 3 minutes like WhatsApp)
-            if (asset.duration) {
-              const durationInSeconds = asset.duration / 1000; // Convert from ms to seconds
-              const MAX_DURATION = 180; // 3 minutes in seconds
-
-              if (durationInSeconds > MAX_DURATION) {
-                const minutes = Math.floor(durationInSeconds / 60);
-                const seconds = Math.floor(durationInSeconds % 60);
-                Alert.alert(
-                  'Video Too Long',
-                  `The selected video is ${minutes}m ${seconds}s. Maximum allowed duration is 3 minutes. Please select a shorter video or trim it.`
-                );
-                continue;
-              }
-            }
-
-            // Check actual base64 encoded size (true upload size)
-            const base64 = await FileSystem.readAsStringAsync(asset.uri, {
-              encoding: 'base64',
+            const result = await processVideo(asset.uri, (progress, message) => {
+              setVideoProcessingProgress(progress);
+              setVideoProcessingMessage(message);
             });
 
-            const actualUploadSize = base64.length;
-            if (actualUploadSize > MAX_VIDEO_SIZE) {
-              Alert.alert(
-                'Video Too Large',
-                'Video is too large. Choose a shorter video.'
-              );
+            setVideoProcessing(false);
+
+            if (!result.valid) {
+              showVideoValidationError(result.reason || 'Video validation failed');
               continue;
             }
+
+            // Use the processed video URI (which may be compressed/trimmed)
+            newMedia.push({
+              uri: result.uri!,
+              type
+            });
+            continue; // Skip the newMedia.push below since we already added it
           } catch (error) {
-            console.error('Error checking video:', error);
-            Alert.alert('Error', 'Could not verify video. Please try again.');
+            console.error('Error processing video:', error);
+            setVideoProcessing(false);
+            Alert.alert('Error', 'Could not process video. Please try again.');
             continue;
           }
         }
@@ -809,7 +808,8 @@ export default function PropertyTab({ onFormStateChange, resetTrigger }: Propert
               <Text style={styles.uploadLimit}>
                 {(() => {
                   const limits = getUploadLimits();
-                  return `Max ${limits.maxImages} image${limits.maxImages > 1 ? 's' : ''} & ${limits.maxVideos} video${limits.maxVideos > 1 ? 's' : ''} per post (20MB max per video)`;
+                  const videoLimits = getVideoLimits();
+                  return `Max ${limits.maxImages} image${limits.maxImages > 1 ? 's' : ''} & ${limits.maxVideos} video${limits.maxVideos > 1 ? 's' : ''} per post\n(Videos: max ${videoLimits.maxSizeMB}MB, ${videoLimits.maxDurationFormatted} - auto-compressed)`;
                 })()}
               </Text>
             </TouchableOpacity>
@@ -970,6 +970,13 @@ export default function PropertyTab({ onFormStateChange, resetTrigger }: Propert
           })}
         </View>
       )}
+
+      {/* Video Processing Modal */}
+      <VideoProcessingModal
+        visible={videoProcessing}
+        progress={videoProcessingProgress}
+        message={videoProcessingMessage}
+      />
     </ScrollView>
   );
 }
