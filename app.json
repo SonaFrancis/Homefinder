@@ -28,6 +28,8 @@
       "package": "com.homefinder.app",
       "versionCode": 1,
       "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.CAMERA",
@@ -39,7 +41,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#10B981"
-      }
+      },
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro"
