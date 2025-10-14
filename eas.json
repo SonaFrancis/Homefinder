@@ -15,6 +15,10 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://rjuddnibsssypavixhcr.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqdWRkbmlic3NzeXBhdml4aGNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTAyOTQsImV4cCI6MjA3NDk2NjI5NH0.j70bMtFdS3fGrHU9X_KEsDjezp6pkshQubvP1tdK-8A"
+      },
       "ios": {
         "buildConfiguration": "Release"
       },
@@ -23,6 +27,10 @@
       }
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://rjuddnibsssypavixhcr.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqdWRkbmlic3NzeXBhdml4aGNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTAyOTQsImV4cCI6MjA3NDk2NjI5NH0.j70bMtFdS3fGrHU9X_KEsDjezp6pkshQubvP1tdK-8A"
+      },
       "ios": {
         "buildConfiguration": "Release"
       },
