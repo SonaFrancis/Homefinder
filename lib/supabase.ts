@@ -36,6 +36,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // Enhanced session management for production
+    flowType: 'pkce', // More secure auth flow
+    debug: __DEV__, // Enable debug logs in development
   },
 });
 

@@ -108,8 +108,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
-    set({ session: null, user: null, profile: null, subscription: null });
+    try {
+      console.log('[Auth] Signing out user...');
+
+      // Sign out from Supabase (this clears the session from SecureStore)
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error('[Auth] Error signing out:', error);
+      }
+
+      // Clear all auth state
+      set({ session: null, user: null, profile: null, subscription: null });
+
+      console.log('[Auth] User signed out successfully');
+    } catch (error) {
+      console.error('[Auth] Unexpected error during sign out:', error);
+      // Still clear state even if sign out fails
+      set({ session: null, user: null, profile: null, subscription: null });
+    }
   },
 
   handleAuthError: async (error: any) => {
@@ -189,49 +206,69 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ loading: true });
 
     try {
-      // Get initial session with error handling
+      console.log('[Auth] Initializing authentication...');
+
+      // Step 1: Try to recover existing session from SecureStore
       const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error) {
+        console.warn('[Auth] Error getting session:', error.message);
         await get().handleAuthError(error);
       } else if (session) {
+        console.log('[Auth] Session recovered successfully, user:', session.user.email);
         set({ session, user: session.user });
-        await get().fetchProfile();
-        await get().fetchSubscription();
+
+        // Fetch user data in parallel for faster load
+        await Promise.all([
+          get().fetchProfile(),
+          get().fetchSubscription(),
+        ]);
+
+        console.log('[Auth] User data loaded');
+      } else {
+        console.log('[Auth] No existing session found');
       }
 
-      // Listen for auth changes with enhanced error handling
+      // Step 2: Set up auth state listener for real-time updates
       supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth event:', event);
+        console.log('[Auth] State change event:', event);
 
         if (event === 'SIGNED_OUT') {
+          console.log('[Auth] User signed out');
           set({ session: null, user: null, profile: null, subscription: null });
           try {
             router.replace('/(auth)/login');
           } catch (routerError) {
-            console.warn('Router not available yet');
+            console.warn('[Auth] Router not available yet');
           }
         } else if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed successfully');
+          console.log('[Auth] Token refreshed successfully');
           get().setSession(session);
         } else if (event === 'SIGNED_IN') {
+          console.log('[Auth] User signed in:', session?.user.email);
           get().setSession(session);
+
           // Wait for profile to load before navigating
-          await get().fetchProfile();
-          await get().fetchSubscription();
+          await Promise.all([
+            get().fetchProfile(),
+            get().fetchSubscription(),
+          ]);
+
           try {
             router.replace('/(tabs)');
           } catch (routerError) {
-            console.warn('Router not available yet');
+            console.warn('[Auth] Router not available yet');
           }
         } else if (event === 'USER_UPDATED') {
+          console.log('[Auth] User data updated');
           get().setSession(session);
         }
       });
 
       set({ loading: false, initialized: true });
+      console.log('[Auth] Initialization complete');
     } catch (error) {
-      console.error('Error initializing auth:', error);
+      console.error('[Auth] Error initializing:', error);
       await get().handleAuthError(error);
       set({ loading: false, initialized: true });
     }
