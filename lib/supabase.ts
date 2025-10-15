@@ -126,6 +126,9 @@ export interface RentalProperty {
   price: number;
   city: string;
   address?: string;
+  street?: string;
+  landmarks?: string;
+  contact_number?: string;
   latitude?: number;
   longitude?: number;
   bedrooms?: number;

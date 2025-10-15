@@ -114,7 +114,7 @@ export default function PropertyDetailScreen() {
   };
 
   const handleWhatsAppClick = async () => {
-    const phone = property?.profiles?.whatsapp_number || property?.profiles?.phone_number;
+    const phone = property?.contact_number || property?.profiles?.whatsapp_number || property?.profiles?.phone_number;
     if (!phone) {
       Alert.alert('Contact Unavailable', 'WhatsApp number not provided');
       return;
@@ -165,7 +165,7 @@ I'd like to get more information about this property. When can we discuss?`;
   };
 
   const handleCall = () => {
-    const phone = property?.profiles?.phone_number || property?.profiles?.whatsapp_number;
+    const phone = property?.contact_number || property?.profiles?.phone_number || property?.profiles?.whatsapp_number;
     if (!phone) {
       Alert.alert('Contact Unavailable', 'Phone number not provided');
       return;
