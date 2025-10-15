@@ -213,18 +213,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (error) {
         console.warn('[Auth] Error getting session:', error.message);
-        await get().handleAuthError(error);
+
+        // If refresh token is invalid, clear it and start fresh
+        if (error.message?.includes('Refresh Token')) {
+          console.log('[Auth] Clearing invalid session');
+          await supabase.auth.signOut();
+          set({ session: null, user: null, profile: null, subscription: null });
+        }
       } else if (session) {
         console.log('[Auth] Session recovered successfully, user:', session.user.email);
         set({ session, user: session.user });
 
         // Fetch user data in parallel for faster load
-        await Promise.all([
-          get().fetchProfile(),
-          get().fetchSubscription(),
-        ]);
-
-        console.log('[Auth] User data loaded');
+        try {
+          await Promise.all([
+            get().fetchProfile(),
+            get().fetchSubscription(),
+          ]);
+          console.log('[Auth] User data loaded');
+        } catch (dataError) {
+          console.error('[Auth] Error loading user data:', dataError);
+          // Continue anyway - user can still use the app
+        }
       } else {
         console.log('[Auth] No existing session found');
       }
@@ -249,10 +259,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           get().setSession(session);
 
           // Wait for profile to load before navigating
-          await Promise.all([
-            get().fetchProfile(),
-            get().fetchSubscription(),
-          ]);
+          try {
+            await Promise.all([
+              get().fetchProfile(),
+              get().fetchSubscription(),
+            ]);
+          } catch (dataError) {
+            console.error('[Auth] Error loading user data:', dataError);
+          }
 
           try {
             router.replace('/(tabs)');
@@ -269,8 +283,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.log('[Auth] Initialization complete');
     } catch (error) {
       console.error('[Auth] Error initializing:', error);
-      await get().handleAuthError(error);
-      set({ loading: false, initialized: true });
+      // Clear any corrupted session data
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutError) {
+        console.warn('[Auth] Error signing out during cleanup:', signOutError);
+      }
+      set({ session: null, user: null, profile: null, subscription: null, loading: false, initialized: true });
     }
   },
 }));

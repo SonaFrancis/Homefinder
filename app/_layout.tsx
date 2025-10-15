@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { View, ActivityIndicator, StyleSheet, Image, Text } from 'react-native';
@@ -8,34 +8,13 @@ import { queryClient } from '@/lib/queryClient';
 
 export default function RootLayout() {
   const initialize = useAuthStore((state) => state.initialize);
-  const session = useAuthStore((state) => state.session);
   const initialized = useAuthStore((state) => state.initialized);
   const loading = useAuthStore((state) => state.loading);
-
-  const router = useRouter();
-  const segments = useSegments();
 
   useEffect(() => {
     // Initialize auth store on app start
     initialize();
   }, []);
-
-  useEffect(() => {
-    // Only redirect after initialization is complete
-    if (!initialized) return;
-
-    const inAuthGroup = segments[0] === '(auth)';
-
-    if (!session && !inAuthGroup) {
-      // User is not signed in and trying to access protected route
-      console.log('[Router] Redirecting to login');
-      router.replace('/(auth)/login');
-    } else if (session && inAuthGroup) {
-      // User is signed in but on auth screen
-      console.log('[Router] Redirecting to tabs');
-      router.replace('/(tabs)');
-    }
-  }, [session, segments, initialized]);
 
   // Show loading screen while initializing
   if (!initialized || loading) {
